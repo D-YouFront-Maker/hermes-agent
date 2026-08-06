@@ -503,8 +503,8 @@ export const pt: Translations = {
 
   achievements: {
     hero: {
-      kicker: "Agentic Gamerscore",
-      title: "Hermes Achievements",
+      kicker: "Pontuação do agente",
+      title: "Conquistas do Hermes",
       subtitle:
         "Distintivos colecionáveis do Hermes obtidos a partir do histórico real de sessões. Conquistas conhecidas mas ainda não obtidas aparecem como Descobertas; conquistas Secretas permanecem ocultas até surgir o primeiro comportamento correspondente.",
       scan_subtitle:
@@ -521,7 +521,7 @@ export const pt: Translations = {
       secrets: "Secretas",
       secrets_hint: "ocultas até ao primeiro sinal",
       highest_tier: "Nível mais alto",
-      highest_tier_hint: "Copper → Silver → Gold → Diamond → Olympian",
+      highest_tier_hint: "Cobre → Prata → Ouro → Diamante → Olímpico",
       latest: "Mais recente",
       latest_hint_empty: "execute mais o Hermes",
       none_yet: "Ainda nenhuma",
@@ -604,7 +604,7 @@ export const pt: Translations = {
         "Partilhar no X abre uma publicação pré-preenchida num novo separador. Clique primeiro em Copiar imagem se quiser anexar o distintivo 1200×630 — o X permite colá-lo diretamente no compositor da publicação. Transferir PNG guarda o ficheiro para utilização em qualquer lado.",
       clipboard_unsupported:
         "A cópia de imagens para a área de transferência não é suportada neste navegador — utilize Transferir.",
-      tweet_text: "Just unlocked {tier_part}\"{name}\" in Hermes Agent ☤",
+      tweet_text: "Acabei de desbloquear {tier_part}\"{name}\" no Hermes Agent ☤",
     },
   },
   kanban: {
