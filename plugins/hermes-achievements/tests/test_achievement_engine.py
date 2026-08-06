@@ -106,6 +106,54 @@ class AchievementEngineTests(unittest.TestCase):
         self.assertGreaterEqual(len(ids), 60)
         self.assertEqual(len(ids), len(set(ids)))
 
+    def test_portuguese_catalog_covers_every_achievement(self):
+        catalog_ids = {achievement["id"] for achievement in plugin_api.ACHIEVEMENTS}
+
+        self.assertEqual(set(plugin_api.PT_ACHIEVEMENTS), catalog_ids)
+        for translation in plugin_api.PT_ACHIEVEMENTS.values():
+            self.assertTrue(translation["name"].strip())
+            self.assertTrue(translation["description"].strip())
+
+    def test_display_achievement_localizes_complete_card_to_portuguese(self):
+        definition = next(
+            achievement
+            for achievement in plugin_api.ACHIEVEMENTS
+            if achievement["id"] == "stack_trace_sommelier"
+        )
+        evaluated = plugin_api.evaluate_definition(
+            definition,
+            {"traceback_events": 27},
+        )
+
+        display = plugin_api.display_achievement(
+            {**definition, **evaluated}, locale="pt"
+        )
+
+        self.assertEqual(display["name"], "Sommelier de Stack Traces")
+        self.assertEqual(display["category"], "Caos de Depuração")
+        self.assertIn("Requisito:", display["criteria"])
+        self.assertIn("Cobre 300", display["criteria"])
+        self.assertNotIn("Taste tracebacks", display["description"])
+
+    def test_secret_achievement_placeholder_is_localized_to_portuguese(self):
+        definition = next(
+            achievement
+            for achievement in plugin_api.ACHIEVEMENTS
+            if achievement["id"] == "permission_denied_any_percent"
+        )
+        evaluated = plugin_api.evaluate_definition(
+            definition,
+            {"permission_denied_events": 0},
+        )
+
+        display = plugin_api.display_achievement(
+            {**definition, **evaluated}, locale="pt-BR"
+        )
+
+        self.assertEqual(display["name"], "???")
+        self.assertIn("Conquista secreta", display["description"])
+        self.assertIn("Requisito exato oculto", display["criteria"])
+
     def test_model_provider_metrics_are_aggregated(self):
         sessions = [
             {"model_names": {"openai/gpt-5", "anthropic/claude-sonnet-4"}},

@@ -104,6 +104,20 @@
     return TIER_HEX[tier] || "#67e8f9";
   }
 
+  const PT_TIER_LABELS = {
+    Copper: "Cobre",
+    Silver: "Prata",
+    Gold: "Ouro",
+    Diamond: "Diamante",
+    Olympian: "Olímpico",
+  };
+
+  function tierLabelForLocale(tier, locale) {
+    return locale && locale.toLowerCase().indexOf("pt") === 0
+      ? (PT_TIER_LABELS[tier] || tier)
+      : tier;
+  }
+
   // Render a LUCIDE icon path fragment into a standalone SVG string with an
   // explicit stroke color so it can be rasterized onto a <canvas> via Image.
   // The normal render path uses stroke="currentColor" which browsers honor in
@@ -145,7 +159,7 @@
 
   // Build a 1200x630 share card PNG for a single achievement. Returns a Blob.
   // Pure client-side render via Canvas2D — no external deps, no network.
-  async function buildShareImage(achievement) {
+  async function buildShareImage(achievement, labels) {
     const W = 1200;
     const H = 630;
     const canvas = document.createElement("canvas");
@@ -263,7 +277,7 @@
     ctx.textBaseline = "top";
     ctx.fillStyle = color;
     ctx.font = "800 24px ui-monospace, 'SF Mono', Menlo, monospace";
-    const stamp = "◆ UNLOCKED";
+    const stamp = "◆ " + ((labels && labels.unlocked) || "UNLOCKED");
     const stampW = ctx.measureText(stamp).width;
     ctx.fillText(stamp, W - 70 - stampW, 70);
 
@@ -275,7 +289,7 @@
   }
 
   function ShareDialog({ achievement, onClose }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [status, setStatus] = hooks.useState("rendering"); // rendering | ready | copied | error
     const [errorMsg, setErrorMsg] = hooks.useState(null);
     const [previewUrl, setPreviewUrl] = hooks.useState(null);
@@ -284,7 +298,9 @@
     hooks.useEffect(function () {
       let cancelled = false;
       let createdUrl = null;
-      buildShareImage(achievement).then(function (blob) {
+      buildShareImage(achievement, {
+        unlocked: tx(t, "state.unlocked", "Unlocked").toUpperCase(),
+      }).then(function (blob) {
         if (cancelled) return;
         blobRef.current = blob;
         createdUrl = URL.createObjectURL(blob);
@@ -299,7 +315,7 @@
         cancelled = true;
         if (createdUrl) URL.revokeObjectURL(createdUrl);
       };
-    }, [achievement.id]);
+    }, [achievement.id, locale]);
 
     function download() {
       if (!blobRef.current) return;
@@ -334,7 +350,11 @@
     // when the user hasn't attached the PNG yet — they'll copy-image and
     // paste in the same flow.
     function tweetText() {
-      const tierPart = achievement.tier ? (achievement.tier + " tier ") : "";
+      const tierPart = achievement.tier
+        ? (locale && locale.toLowerCase().indexOf("pt") === 0
+          ? ("nível " + tierLabelForLocale(achievement.tier, locale) + " ")
+          : (achievement.tier + " tier "))
+        : "";
       const tmpl = tx(t, "share.tweet_text", "Just unlocked {tier_part}\"{name}\" in Hermes Agent ☤", {
         tier_part: tierPart,
         name: achievement.name,
@@ -397,12 +417,13 @@
   }
 
   function TierLegend() {
+    const { locale } = useI18n();
     return React.createElement("div", { className: "ha-tier-legend" },
       ["Copper", "Silver", "Gold", "Diamond", "Olympian"].map(function (tier, index, arr) {
         return React.createElement(React.Fragment, { key: tier },
           React.createElement("span", { className: "ha-tier-step ha-tier-" + tier.toLowerCase() },
             React.createElement("i", null),
-            tier
+            tierLabelForLocale(tier, locale)
           ),
           index < arr.length - 1 && React.createElement("span", { className: "ha-tier-arrow" }, "→")
         );
@@ -490,7 +511,7 @@
 
 
   function AchievementCard({ achievement }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const unlocked = achievement.unlocked;
     const progress = achievement.progress || 0;
     const pct = achievement.progress_pct || (unlocked ? 100 : 0);
@@ -501,9 +522,9 @@
     const targetTier = achievement.next_tier || achievement.tier;
     let tierLabel;
     if (achievement.tier) {
-      tierLabel = achievement.tier;
+      tierLabel = tierLabelForLocale(achievement.tier, locale);
     } else if (targetTier) {
-      tierLabel = tx(t, "tier.target", "Target {tier}", { tier: targetTier });
+      tierLabel = tx(t, "tier.target", "Target {tier}", { tier: tierLabelForLocale(targetTier, locale) });
     } else if (state === "secret") {
       tierLabel = tx(t, "tier.hidden", "Hidden");
     } else if (unlocked) {
@@ -562,7 +583,7 @@
   }
 
   function AchievementsPage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [data, setData] = hooks.useState(null);
     const [loading, setLoading] = hooks.useState(true);
     const [error, setError] = hooks.useState(null);
@@ -571,7 +592,7 @@
 
     function load() {
       setLoading(true);
-      api("/achievements")
+      api("/achievements?locale=" + encodeURIComponent(locale || "en"))
         .then(function (payload) { setData(payload); setError((payload && payload.error) || null); })
         .catch(function (err) { setError(String(err)); })
         .finally(function () { setLoading(false); });
@@ -580,11 +601,11 @@
     // auto-poller during an in-progress background scan so the page updates
     // with growing unlock counts instead of flashing the loading skeleton.
     function refresh() {
-      api("/achievements")
+      api("/achievements?locale=" + encodeURIComponent(locale || "en"))
         .then(function (payload) { setData(payload); setError((payload && payload.error) || null); })
         .catch(function (err) { setError(String(err)); });
     }
-    hooks.useEffect(load, []);
+    hooks.useEffect(load, [locale]);
 
     // Auto-poll while the backend is still scanning. scan_meta.mode is
     // "pending" on the very first request (no cache yet) and "in_progress"
@@ -596,7 +617,7 @@
       if (!scanInFlight) return undefined;
       const id = setInterval(refresh, 4000);
       return function () { clearInterval(id); };
-    }, [scanInFlight]);
+    }, [scanInFlight, locale]);
 
     const achievements = (data && data.achievements) || [];
     const categories = ["All"].concat(Array.from(new Set(achievements.map(function (a) { return a.category; }))));
@@ -611,7 +632,8 @@
     const discovered = achievements.filter(function (a) { return a.state === "discovered"; });
     const secret = achievements.filter(function (a) { return a.state === "secret"; });
     const latest = unlocked.slice().sort(function (a, b) { return (b.unlocked_at || 0) - (a.unlocked_at || 0); }).slice(0, 5);
-    const highest = ["Olympian", "Diamond", "Gold", "Silver", "Copper"].find(function (tier) { return unlocked.some(function (a) { return a.tier === tier; }); }) || tx(t, "stats.none_yet", "None yet");
+    const highestTier = ["Olympian", "Diamond", "Gold", "Silver", "Copper"].find(function (tier) { return unlocked.some(function (a) { return a.tier === tier; }); });
+    const highest = highestTier ? tierLabelForLocale(highestTier, locale) : tx(t, "stats.none_yet", "None yet");
 
     // Build the in-progress scan banner once so the JSX below stays readable.
     // Shows nothing when the scan is idle. When a scan is running it renders

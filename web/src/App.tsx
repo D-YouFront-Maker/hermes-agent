@@ -465,9 +465,19 @@ export default function App() {
       : base.filter((n) => n.path !== "/analytics");
   }, [embeddedChat, showTokenAnalytics]);
 
+  const localizedManifests = useMemo(
+    () =>
+      manifests.map((manifest) =>
+        manifest.name === "hermes-achievements"
+          ? { ...manifest, label: t.achievements.hero.title }
+          : manifest,
+      ),
+    [manifests, t.achievements.hero.title],
+  );
+
   const sidebarNav = useMemo(
-    () => partitionSidebarNav(builtinNav, manifests),
-    [builtinNav, manifests],
+    () => partitionSidebarNav(builtinNav, localizedManifests),
+    [builtinNav, localizedManifests],
   );
   const routes = useMemo(
     () => buildRoutes(builtinRoutes, manifests),
@@ -475,13 +485,13 @@ export default function App() {
   );
   const pluginTabMeta = useMemo(
     () =>
-      manifests
+      localizedManifests
         .filter((m) => !m.tab.hidden)
         .map((m) => ({
           path: m.tab.override ?? m.tab.path,
           label: m.label,
         })),
-    [manifests],
+    [localizedManifests],
   );
 
   const layoutVariant = theme.layoutVariant ?? "standard";

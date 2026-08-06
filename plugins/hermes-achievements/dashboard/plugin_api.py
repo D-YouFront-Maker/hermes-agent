@@ -141,6 +141,88 @@ ACHIEVEMENTS: List[Dict[str, Any]] = [
     {"id": "cache_hit_appreciator", "name": "Cache Hit Appreciator", "description": "Notice or benefit from prompt/cache behavior.", "category": "Lifestyle", "kind": "lifetime", "icon": "cache", "secret": True, "threshold_metric": "cache_events", "tiers": tiers([100, 300, 1000, 3000, 8000])},
 ]
 
+PT_ACHIEVEMENTS: Dict[str, Dict[str, str]] = {
+    "let_him_cook": {"name": "Deixa Ele Cozinhar", "description": "Deixe o Hermes executar uma sequência realmente séria de ferramentas autônomas em uma única sessão."},
+    "autonomous_avalanche": {"name": "Avalanche Autônoma", "description": "Acumule uma avalanche histórica de chamadas de ferramentas do Hermes ao longo das sessões."},
+    "toolchain_maxxer": {"name": "Maximizador de Ferramentas", "description": "Use uma grande variedade de ferramentas diferentes do Hermes em uma única sessão."},
+    "full_send": {"name": "Com Tudo", "description": "Terminal, arquivos e web ou navegador participam juntos de uma execução de verdade."},
+    "subagent_commander": {"name": "Comandante de Subagentes", "description": "Coordene trabalhos delegados a outros agentes."},
+    "background_process_enjoyer": {"name": "Fã de Processos em Segundo Plano", "description": "Inicie ou controle processos de longa duração em quantidade suficiente para merecer o título."},
+    "cron_necromancer": {"name": "Necromante do Cron", "description": "Ressuscite tarefas autônomas agendadas."},
+    "red_text_connoisseur": {"name": "Conhecedor de Texto Vermelho", "description": "Encontre erros suficientes para desenvolver um paladar especial por texto vermelho."},
+    "stack_trace_sommelier": {"name": "Sommelier de Stack Traces", "description": "Deguste stack traces por rodada, não apenas por gole."},
+    "actually_read_the_logs": {"name": "Finalmente Leu os Logs", "description": "Inspecione os logs repetidamente em vez de ficar adivinhando."},
+    "port_3000_taken": {"name": "A Porta 3000 Está Ocupada", "description": "Encontre conflitos de porta do servidor de desenvolvimento tantas vezes que isso já não cause reação."},
+    "permission_denied_any_percent": {"name": "Permissão Negada Any%", "description": "Faça um speedrun até uma barreira de permissões."},
+    "dependency_hell_tourist": {"name": "Turista no Inferno das Dependências", "description": "A instalação de pacotes falha e, de algum modo, a vida continua."},
+    "the_fix_was_restarting": {"name": "A Solução Era Reiniciar", "description": "Reinicie depois de tantos grupos de erros que isso já pode ser chamado de técnica."},
+    "forgot_the_env_var": {"name": "Esqueceu a Variável de Ambiente", "description": "A autenticação ou configuração falhou porque faltava uma variável de ambiente."},
+    "yaml_colon_incident": {"name": "Incidente do Dois-Pontos no YAML", "description": "A sintaxe da configuração resolveu morder de volta."},
+    "docker_name_collision": {"name": "Colisão de Nome no Docker", "description": "Já existe um contêiner com esse nome. É claro que existe."},
+    "supposed_to_be_quick": {"name": "Isso Era Para Ser Rápido", "description": "Um pedido minúsculo vira uma expedição completa."},
+    "one_more_small_change": {"name": "Só Mais Uma Pequena Mudança", "description": "Faça tantas edições de arquivos em uma sessão que a expressão pequena mudança perca o sentido."},
+    "vibe_architect": {"name": "Arquiteto de Vibe", "description": "Trabalhe em uma área ampla do projeto durante uma única sessão."},
+    "pixel_goblin": {"name": "Goblin dos Pixels", "description": "Passe um bom tempo ajustando frontend, CSS, SVG ou detalhes visuais."},
+    "ship_first_ask_later": {"name": "Faça o Deploy Primeiro, Pergunte Depois", "description": "Realize atividade Git depois de uma sequência séria de ferramentas."},
+    "css_exorcist": {"name": "Exorcista de CSS", "description": "Expulse repetidamente os demônios de estilo da interface."},
+    "one_character_fix": {"name": "Correção de Um Caractere", "description": "Uma edição minúscula depois de uma pilha de erros. Doloroso. Lindo."},
+    "skillsmith": {"name": "Ferreiro de Skills", "description": "Trabalhe com skills do Hermes o bastante para deixar impressões digitais."},
+    "skill_issue_skill_created": {"name": "Problema de Skill? Skill Criada.", "description": "Crie ou ajuste procedimentos duráveis em vez de repetir o mesmo trabalho."},
+    "memory_keeper": {"name": "Guardião da Memória", "description": "Preserve conhecimento durável com memória ou Mnemosyne."},
+    "memory_palace": {"name": "Palácio da Memória", "description": "Construa um histórico realmente sólido de memória durável."},
+    "context_dragon": {"name": "Dragão do Contexto", "description": "Esbarre repetidamente em compressão, contextos enormes ou pressão de tokens."},
+    "gateway_dweller": {"name": "Habitante do Gateway", "description": "Viva intensamente os fluxos do Hermes conectados pelo gateway."},
+    "plugin_goblin": {"name": "Goblin dos Plugins", "description": "Use ou desenvolva plugins até o dashboard começar a notar."},
+    "rollback_wizard": {"name": "Mago do Rollback", "description": "Invoque a magia de recuperação por rollback ou checkpoint."},
+    "rabbit_hole_certified": {"name": "Certificado em Toca de Coelho", "description": "Pesquise ou extraia conteúdo da web o bastante para transformar a investigação em uma espiral."},
+    "citation_goblin": {"name": "Goblin das Citações", "description": "Extraia páginas da web o bastante para virar um pequeno bibliotecário."},
+    "docs_archaeologist": {"name": "Arqueólogo da Documentação", "description": "Escave fontes de documentação repetidamente."},
+    "browser_possession": {"name": "Possessão do Navegador", "description": "Possua um navegador por meio de automação repetidas vezes."},
+    "terminal_goblin": {"name": "Goblin do Terminal", "description": "Passe um tempo considerável nas terras do shell."},
+    "patch_wizard": {"name": "Mago dos Patches", "description": "Dobre arquivos à sua vontade usando patches direcionados."},
+    "file_archaeologist": {"name": "Arqueólogo de Arquivos", "description": "Escave o sistema de arquivos com leituras e pesquisas."},
+    "image_whisperer": {"name": "Encantador de Imagens", "description": "Use geração de imagens ou ferramentas de visão o bastante para realizar trabalhos visuais."},
+    "voice_of_the_machine": {"name": "Voz da Máquina", "description": "Use repetidamente conversão de texto em fala ou ferramentas de voz."},
+    "model_hopper": {"name": "Saltador de Modelos", "description": "Troque ou inspecione provedores e modelos até isso virar hábito."},
+    "openrouter_enjoyer": {"name": "Fã do OpenRouter", "description": "Encaminhe repetidamente o trabalho dos modelos pelo OpenRouter."},
+    "codex_conjurer": {"name": "Conjurador do Codex", "description": "Convoque assistência com sabor de Codex vezes suficientes para formar um ritual."},
+    "multi_model_mage": {"name": "Mago Multimodelo", "description": "Use uma variedade real de nomes de modelos no histórico do Hermes."},
+    "five_model_flight": {"name": "Degustação de Cinco Modelos", "description": "Experimente pelo menos cinco LLMs diferentes em vez de se casar com o primeiro que responder."},
+    "provider_polyglot": {"name": "Poliglota de Provedores", "description": "Use modelos de vários provedores ao longo do histórico do Hermes."},
+    "model_sommelier": {"name": "Sommelier de Modelos", "description": "Deguste conversas com modelos e provedores o bastante para desenvolver preferências."},
+    "claude_confidant": {"name": "Confidente do Claude", "description": "Traga repetidamente o raciocínio com sabor de Claude para o fluxo de trabalho."},
+    "gemini_cartographer": {"name": "Cartógrafo do Gemini", "description": "Mapeie fluxos relacionados ao Gemini o bastante para conhecer o terreno."},
+    "open_weights_pilgrim": {"name": "Peregrino dos Pesos Abertos", "description": "Converse de verdade com modelos locais ou de pesos abertos usando os metadados de sessão do Hermes."},
+    "toolset_cartographer": {"name": "Cartógrafo de Conjuntos de Ferramentas", "description": "Navegue pelos conjuntos de ferramentas do Hermes de propósito, sem tratar tudo como um borrão."},
+    "config_surgeon": {"name": "Cirurgião de Configuração", "description": "Opere em arquivos de configuração, manifestos, arquivos de ambiente e ajustes do dashboard sem hesitar."},
+    "rebase_acrobat": {"name": "Acrobata do Rebase", "description": "Faça cirurgia real no histórico Git: rebase, conflitos, merge, fetch e push."},
+    "test_suite_tamer": {"name": "Domador da Suíte de Testes", "description": "Execute tantos comandos de verificação que o texto verde passe a fazer parte do ritual."},
+    "screenshot_hunter": {"name": "Caçador de Capturas de Tela", "description": "Capture, inspecione e refine provas visuais em vez de apenas afirmar que funcionou."},
+    "marathon_operator": {"name": "Operador de Maratona", "description": "Acumule uma quantidade realmente grande de sessões do Hermes."},
+    "weekend_warrior": {"name": "Guerreiro de Fim de Semana", "description": "Execute o Hermes nos fins de semana até isso virar um estilo de vida."},
+    "night_shift_operator": {"name": "Operador do Turno da Noite", "description": "Execute sessões repetidamente durante o horário dos gremlins."},
+    "cache_hit_appreciator": {"name": "Apreciador de Cache Hit", "description": "Perceba ou aproveite o comportamento de prompt e cache."},
+}
+
+PT_CATEGORIES = {
+    "Agent Autonomy": "Autonomia do Agente",
+    "Debugging Chaos": "Caos de Depuração",
+    "Vibe Coding": "Programação por Vibe",
+    "Hermes Native": "Nativo do Hermes",
+    "Research/Web": "Pesquisa/Web",
+    "Tool Mastery": "Domínio de Ferramentas",
+    "Model Lore": "Conhecimento de Modelos",
+    "Lifestyle": "Estilo de Vida",
+}
+
+PT_TIER_NAMES = {
+    "Copper": "Cobre",
+    "Silver": "Prata",
+    "Gold": "Ouro",
+    "Diamond": "Diamante",
+    "Olympian": "Olímpico",
+}
+
 
 def _data_dir() -> Path:
     """Durable data root (``<hermes home>/plugin-data/hermes-achievements/``).
@@ -557,12 +639,103 @@ METRIC_LABELS = {
     "night_sessions": "sessions started late night or before dawn",
 }
 
+PT_METRIC_LABELS = {
+    "max_tool_calls_in_session": "chamadas de ferramentas em uma sessão",
+    "max_distinct_tools_in_session": "ferramentas diferentes do Hermes usadas em uma sessão",
+    "max_terminal_calls_in_session": "chamadas de terminal em uma sessão",
+    "max_file_tool_calls_in_session": "chamadas de arquivo, pesquisa ou patch em uma sessão",
+    "max_web_browser_calls_in_session": "pesquisas, extrações ou chamadas do navegador em uma sessão",
+    "max_messages_in_session": "mensagens em uma sessão",
+    "max_files_touched_in_session": "arquivos alterados em uma sessão",
+    "total_delegate_calls": "chamadas de delegate_task em todo o histórico",
+    "total_process_calls": "operações com processos em segundo plano em todo o histórico",
+    "total_cron_calls": "operações com tarefas agendadas em todo o histórico",
+    "total_errors": "mensagens de erro, falha ou traceback observadas",
+    "traceback_events": "menções a stack trace ou exceção",
+    "log_read_events": "inspeções de logs",
+    "port_conflict_events": "conflitos de porta do servidor de desenvolvimento detectados",
+    "permission_denied_events": "erros de permissão negada",
+    "install_error_events": "falhas na instalação de pacotes",
+    "install_success_events": "instalações de pacotes concluídas depois de tentativas anteriores",
+    "restart_after_error_events": "reinícios ou recarregamentos depois de grupos de erros",
+    "env_var_error_events": "eventos de autenticação, configuração ou variável de ambiente ausente",
+    "yaml_error_events": "incidentes de análise de YAML ou configuração",
+    "docker_conflict_events": "conflitos de nome de contêiner ou Docker",
+    "frontend_activity_events": "menções a atividades de frontend, CSS, SVG ou React",
+    "css_activity_events": "atividades com CSS, estilos, Tailwind ou className",
+    "git_events": "comandos de fluxo de trabalho Git",
+    "tiny_patch_after_errors_events": "correções minúsculas de digitação depois de grupos de erros",
+    "skill_events": "menções ou uso de ferramentas de skills do Hermes",
+    "skill_manage_events": "operações de criação, alteração ou exclusão com skill_manage",
+    "memory_events": "eventos de memória ou da ferramenta Mnemosyne",
+    "memory_write_events": "gravações de memória durável",
+    "context_events": "menções a contexto, compressão, tokens ou pressão de cache",
+    "gateway_events": "atividades de gateway, API ou plataformas de conversa",
+    "plugin_events": "sinais de uso ou desenvolvimento de plugins do dashboard",
+    "rollback_events": "menções a recuperação por rollback ou checkpoint",
+    "docs_activity_events": "atividades com documentação, README ou docs",
+    "model_events": "atividades relacionadas a modelos ou provedores",
+    "openrouter_events": "menções ao OpenRouter",
+    "codex_events": "menções ao Codex",
+    "cache_events": "menções a cache de prompt ou cache hit",
+    "total_web_calls": "chamadas de web_search ou web_extract em todo o histórico",
+    "total_web_extract_calls": "chamadas de web_extract em todo o histórico",
+    "browser_calls": "chamadas de automação do navegador em todo o histórico",
+    "total_tool_calls": "chamadas de ferramentas do Hermes em todo o histórico",
+    "total_terminal_calls": "chamadas de terminal em todo o histórico",
+    "total_patch_calls": "edições direcionadas com patch em todo o histórico",
+    "total_file_reads_searches": "chamadas de read_file ou search_files em todo o histórico",
+    "image_vision_calls": "chamadas de geração de imagens ou ferramentas de visão",
+    "tts_calls": "chamadas de conversão de texto em fala ou voz",
+    "distinct_model_count": "nomes de modelos diferentes encontrados nos metadados das sessões",
+    "distinct_provider_count": "provedores diferentes inferidos dos metadados das sessões",
+    "claude_events": "menções a modelos Claude ou Anthropic",
+    "gemini_events": "menções a modelos Gemini ou Google",
+    "local_model_events": "menções a modelos locais ou de pesos abertos",
+    "local_model_chat_sessions": "sessões do Hermes com modelo local ou de pesos abertos nos metadados",
+    "toolset_events": "menções a conjuntos ou famílias de ferramentas",
+    "config_events": "atividades com configuração, ambiente ou manifestos",
+    "git_history_events": "operações no histórico Git como rebase, merge, fetch, push ou tag",
+    "test_events": "menções a comandos de testes, checagens ou verificações",
+    "screenshot_events": "atividades com captura de tela, Playwright, PNG ou inspeção visual",
+    "release_events": "eventos de release, versão, publicação ou tag Git",
+    "session_count": "sessões do Hermes",
+    "weekend_sessions": "sessões iniciadas nos fins de semana",
+    "night_sessions": "sessões iniciadas de madrugada ou tarde da noite",
+}
 
-def metric_label(metric: str) -> str:
-    return METRIC_LABELS.get(metric, metric.replace("_", " "))
+
+def _is_portuguese(locale: Optional[str]) -> bool:
+    return str(locale or "").lower().replace("_", "-").startswith("pt")
 
 
-def criteria_for(definition: Dict[str, Any]) -> str:
+def metric_label(metric: str, locale: Optional[str] = None) -> str:
+    labels = PT_METRIC_LABELS if _is_portuguese(locale) else METRIC_LABELS
+    return labels.get(metric, metric.replace("_", " "))
+
+
+def criteria_for(definition: Dict[str, Any], locale: Optional[str] = None) -> str:
+    if _is_portuguese(locale):
+        if definition.get("secret") and definition.get("state") == "secret":
+            return "Requisito exato oculto até o Hermes detectar o primeiro sinal correspondente. Continue usando o Hermes em depuração, ferramentas, memória, skills, plugins e fluxos de modelos para revelá-lo."
+        if "threshold_metric" in definition:
+            tiers_list = sorted(definition.get("tiers", []), key=lambda t: t["threshold"])
+            if not tiers_list:
+                return "Requisito: use o Hermes no fluxo de trabalho correspondente."
+            metric = metric_label(definition["threshold_metric"], locale)
+            ladder = ", ".join(
+                f"{PT_TIER_NAMES.get(t['name'], t['name'])} {t['threshold']}"
+                for t in tiers_list
+            )
+            return f"Requisito: {metric}. Escada de níveis: {ladder}."
+        requirements = definition.get("requirements") or []
+        if requirements:
+            parts = [
+                f"{metric_label(r['metric'], locale)} ≥ {int(r.get('gte', 1))}"
+                for r in requirements
+            ]
+            return "Requisito: " + "; ".join(parts) + "."
+        return "Requisito: conclua o comportamento correspondente no Hermes."
     if definition.get("secret") and definition.get("state") == "secret":
         return "Secret: exact requirement hidden until Hermes sees the first matching signal. Keep using Hermes across debugging, tools, memory, skills, plugins, and model workflows to reveal it."
     secret_prefix = ""
@@ -580,11 +753,22 @@ def criteria_for(definition: Dict[str, Any]) -> str:
     return secret_prefix + "Requirement: complete the matching Hermes behavior."
 
 
-def display_achievement(item: Dict[str, Any]) -> Dict[str, Any]:
+def display_achievement(item: Dict[str, Any], locale: Optional[str] = None) -> Dict[str, Any]:
     clean = dict(item)
     if clean.get("state") == "secret":
-        return {**clean, "name": "???", "description": "Secret achievement: hidden until Hermes detects the first relevant behavior in your session history.", "criteria": criteria_for(clean), "icon": "secret"}
-    clean["criteria"] = criteria_for(clean)
+        description = (
+            "Conquista secreta: oculta até o Hermes detectar o primeiro comportamento relevante no histórico das suas sessões."
+            if _is_portuguese(locale)
+            else "Secret achievement: hidden until Hermes detects the first relevant behavior in your session history."
+        )
+        return {**clean, "name": "???", "description": description, "criteria": criteria_for(clean, locale), "icon": "secret"}
+    if _is_portuguese(locale):
+        translation = PT_ACHIEVEMENTS.get(str(clean.get("id")))
+        if translation:
+            clean.update(translation)
+        category = str(clean.get("category") or "")
+        clean["category"] = PT_CATEGORIES.get(category, category)
+    clean["criteria"] = criteria_for(clean, locale)
     return clean
 
 
@@ -1028,9 +1212,13 @@ def evaluate_all(force: bool = False) -> Dict[str, Any]:
 
 
 @router.get("/achievements")
-async def achievements():
+async def achievements(locale: Optional[str] = None):
     data = evaluate_all()
     payload = {k: data[k] for k in ["achievements", "unlocked_count", "discovered_count", "secret_count", "total_count", "error", "generated_at"] if k in data}
+    payload["achievements"] = [
+        display_achievement(item, locale)
+        for item in payload.get("achievements", [])
+    ]
     payload["is_stale"] = _is_snapshot_stale(data)
     payload["scan_meta"] = {
         **(data.get("scan_meta") or {}),
@@ -1045,13 +1233,14 @@ async def scan_status():
 
 
 @router.get("/recent-unlocks")
-async def recent_unlocks():
+async def recent_unlocks(locale: Optional[str] = None):
     data = evaluate_all()
-    return sorted([a for a in data["achievements"] if a["unlocked"]], key=lambda a: a.get("unlocked_at") or 0, reverse=True)[:20]
+    recent = sorted([a for a in data["achievements"] if a["unlocked"]], key=lambda a: a.get("unlocked_at") or 0, reverse=True)[:20]
+    return [display_achievement(item, locale) for item in recent]
 
 
 @router.get("/sessions/{session_id}/badges")
-async def session_badges(session_id: str):
+async def session_badges(session_id: str, locale: Optional[str] = None):
     data = evaluate_all()
     session = next((s for s in data["sessions"] if s["session_id"] == session_id), None)
     if not session:
@@ -1061,7 +1250,7 @@ async def session_badges(session_id: str):
     for definition in ACHIEVEMENTS:
         result = evaluate_definition(definition, aggregate)
         if result["unlocked"]:
-            badges.append(display_achievement({**definition, **result}))
+            badges.append(display_achievement({**definition, **result}, locale))
     return {"session_id": session_id, "badges": badges}
 
 
