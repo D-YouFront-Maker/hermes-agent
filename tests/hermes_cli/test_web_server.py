@@ -28,6 +28,24 @@ from hermes_cli.config import (
 # ---------------------------------------------------------------------------
 
 
+def test_user_documentation_path_is_owned_by_dashboard_spa():
+    """The dashboard's /docs route must not be shadowed by Swagger UI."""
+    from starlette.testclient import TestClient
+    from hermes_cli import web_server
+
+    response = TestClient(web_server.app).get("/docs")
+
+    assert response.status_code == 200
+    assert "Hermes Agent - Dashboard" in response.text
+    assert "Swagger UI" not in response.text
+
+
+def test_openapi_documentation_stays_available_under_api_namespace():
+    from hermes_cli import web_server
+
+    assert web_server.app.docs_url == "/api/docs"
+
+
 # Path to the test-only example-dashboard plugin. Lives under
 # tests/fixtures/ so the bundled-plugins directory stays clean — stock
 # installs no longer ship a dummy "Example" sidebar tab. Tests that

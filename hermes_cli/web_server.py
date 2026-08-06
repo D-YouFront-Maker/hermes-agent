@@ -478,7 +478,15 @@ def _get_pty_active_session_files(app: "FastAPI") -> dict[str, Path]:
         return app.state.pty_active_session_files
 
 
-app = FastAPI(title="Hermes Agent", version=__version__, lifespan=_lifespan)
+# Keep the user-facing dashboard route at /docs. FastAPI's default Swagger
+# path used to shadow the SPA there, so clicking "Documentation" opened the
+# English-only API explorer instead of the localized Hermes documentation.
+app = FastAPI(
+    title="Hermes Agent",
+    version=__version__,
+    lifespan=_lifespan,
+    docs_url="/api/docs",
+)
 
 
 # Memory-provider OAuth connect routes live in the memory layer, not here.
