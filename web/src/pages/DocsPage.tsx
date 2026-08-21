@@ -3,9 +3,8 @@ import { ExternalLink } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { usePageHeader } from "@/contexts/usePageHeader";
 import { cn } from "@/lib/utils";
+import { HERMES_DOCS_URL, docsUrlForLocale } from "@/lib/docs-url";
 import { PluginSlot } from "@/plugins";
-
-export const HERMES_DOCS_URL = "https://hermes-agent.nousresearch.com/docs/";
 
 const DS_BUTTON_OUTLINED_LINK_CN = cn(
   "group relative inline-grid grid-cols-[auto_1fr_auto] items-center",
@@ -16,13 +15,14 @@ const DS_BUTTON_OUTLINED_LINK_CN = cn(
 );
 
 export default function DocsPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { setEnd } = usePageHeader();
+  const externalDocsUrl = docsUrlForLocale(locale);
 
   useLayoutEffect(() => {
     setEnd(
       <a
-        href={HERMES_DOCS_URL}
+        href={externalDocsUrl}
         target="_blank"
         rel="noopener noreferrer"
         className={DS_BUTTON_OUTLINED_LINK_CN}
@@ -34,7 +34,7 @@ export default function DocsPage() {
     return () => {
       setEnd(null);
     };
-  }, [setEnd, t]);
+  }, [externalDocsUrl, setEnd, t]);
 
   return (
     <div
