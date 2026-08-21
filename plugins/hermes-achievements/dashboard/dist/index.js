@@ -224,7 +224,7 @@
     }
 
     // Tier badge pill
-    const badgeLabel = tier.toUpperCase() + " TIER";
+    const badgeLabel = (labels && labels.tier) || (tier.toUpperCase() + " TIER");
     ctx.font = "700 22px ui-monospace, 'SF Mono', Menlo, monospace";
     const badgeWidth = ctx.measureText(badgeLabel).width + 32;
     const badgeX = rx;
@@ -298,8 +298,13 @@
     hooks.useEffect(function () {
       let cancelled = false;
       let createdUrl = null;
+      const shareTier = achievement.tier || achievement.next_tier || "Copper";
+      const portuguese = locale && locale.toLowerCase().indexOf("pt") === 0;
       buildShareImage(achievement, {
         unlocked: tx(t, "state.unlocked", "Unlocked").toUpperCase(),
+        tier: portuguese
+          ? ("NÍVEL " + tierLabelForLocale(shareTier, locale)).toUpperCase()
+          : (shareTier + " TIER").toUpperCase(),
       }).then(function (blob) {
         if (cancelled) return;
         blobRef.current = blob;
@@ -589,6 +594,11 @@
     const [error, setError] = hooks.useState(null);
     const [category, setCategory] = hooks.useState("All");
     const [visibility, setVisibility] = hooks.useState("all");
+
+    // Category names come from the localized API response. Reset the selected
+    // category when the locale changes so a label from the previous language
+    // cannot filter every newly translated achievement out of the grid.
+    hooks.useEffect(function () { setCategory("All"); }, [locale]);
 
     function load() {
       setLoading(true);
