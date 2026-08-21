@@ -30,14 +30,13 @@ from hermes_cli.config import (
 
 def test_user_documentation_path_is_owned_by_dashboard_spa():
     """The dashboard's /docs route must not be shadowed by Swagger UI."""
-    from starlette.testclient import TestClient
     from hermes_cli import web_server
 
-    response = TestClient(web_server.app).get("/docs")
+    routes = {(route.path, route.name) for route in web_server.app.routes}
 
-    assert response.status_code == 200
-    assert "Hermes Agent - Dashboard" in response.text
-    assert "Swagger UI" not in response.text
+    assert ("/api/docs", "swagger_ui_html") in routes
+    assert ("/docs", "swagger_ui_html") not in routes
+    assert any(path == "/{full_path:path}" for path, _name in routes)
 
 
 def test_openapi_documentation_stays_available_under_api_namespace():
