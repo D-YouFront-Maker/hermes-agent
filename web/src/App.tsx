@@ -1002,15 +1002,15 @@ function SidebarSystemActions({
       spin: true,
     },
   ];
-  if (canUpdateHermes) {
-    items.push({
-      action: "update",
-      icon: Download,
-      label: t.status.updateHermes,
-      runningLabel: t.status.updatingHermes,
-      spin: false,
-    });
-  }
+  items.push({
+    action: "update",
+    icon: canUpdateHermes ? Download : RotateCw,
+    label: canUpdateHermes ? t.status.updateHermes : "Verificar atualizações",
+    runningLabel: canUpdateHermes
+      ? t.status.updatingHermes
+      : "Verificando atualizações",
+    spin: !canUpdateHermes,
+  });
 
   const handleClick = (action: SystemAction) => {
     if (isBusy) return;
@@ -1019,6 +1019,11 @@ function SidebarSystemActions({
       return;
     }
     if (action === "update") {
+      if (!canUpdateHermes) {
+        navigate("/system");
+        onNavigate();
+        return;
+      }
       setUpdateConfirmOpen(true);
       return;
     }
