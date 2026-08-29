@@ -850,24 +850,30 @@ class TestUpdateCheckEndpoint:
         assert body["behind"] is None
         assert "managed outside this dashboard" in body["message"]
 
-    def test_config_disables_dashboard_update_action(self, monkeypatch):
+    def test_config_disables_apply_but_keeps_official_update_check(self, monkeypatch):
         import yaml
         import hermes_cli.web_server as ws
         from hermes_constants import get_hermes_home
 
         config_path = get_hermes_home() / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump({"updates": {"dashboard_update_enabled": False}}),
+            yaml.safe_dump(
+                {
+                    "updates": {
+                        "dashboard_update_enabled": False,
+                        "dashboard_update_check_ref": "upstream/main",
+                        "dashboard_update_command": "./sync-hermes.sh --integrate-upstream",
+                    }
+                }
+            ),
             encoding="utf-8",
         )
 
+        monkeypatch.setattr(ws, "detect_install_method", lambda *a, **k: "git")
         monkeypatch.setattr(
-            ws,
-            "detect_install_method",
-            lambda *a, **k: pytest.fail(
-                "disabled dashboard update should not probe install method"
-            ),
+            ws, "_check_configured_dashboard_git_ref", lambda remote, branch: 4
         )
+        monkeypatch.setattr(ws, "_recent_upstream_commits", lambda *a, **k: [])
         monkeypatch.setattr(
             ws,
             "_spawn_hermes_action",
@@ -881,7 +887,10 @@ class TestUpdateCheckEndpoint:
 
         check = self.client.get("/api/hermes/update/check").json()
         assert check["can_apply"] is False
-        assert check["update_available"] is False
+        assert check["update_available"] is True
+        assert check["behind"] == 4
+        assert check["check_ref"] == "upstream/main"
+        assert check["update_command"] == "./sync-hermes.sh --integrate-upstream"
         assert "external update workflow" in check["message"]
 
         apply = self.client.post("/api/hermes/update").json()

@@ -2516,6 +2516,19 @@ def _default_hermes_root_is_opt_data() -> bool:
     return root == _HOSTED_MANAGED_FILES_ROOT
 
 
+def _dashboard_updates_config() -> Dict[str, Any]:
+    """Return the user-facing Dashboard update settings, best-effort."""
+    try:
+        updates = (load_config() or {}).get("updates", {})
+        return updates if isinstance(updates, dict) else {}
+    except Exception:
+        return {}
+
+
+def _dashboard_update_disabled_by_config() -> bool:
+    return not bool(_dashboard_updates_config().get("dashboard_update_enabled", True))
+
+
 def _dashboard_update_disabled_message() -> Optional[str]:
     """Explain why the dashboard must not offer ``hermes update``.
 
@@ -2523,21 +2536,11 @@ def _dashboard_update_disabled_message() -> Optional[str]:
     existing container/package checks remain the automatic refusal path for
     immutable installations.
     """
-    try:
-        from hermes_cli.config import load_config
-
-        updates = (load_config() or {}).get("updates", {})
-        if isinstance(updates, dict) and not bool(
-            updates.get("dashboard_update_enabled", True)
-        ):
-            return (
-                "Hermes updates are disabled in this Dashboard because this "
-                "installation uses an external update workflow."
-            )
-    except Exception:
-        # A malformed/unreadable config must not hide updates by accident;
-        # continue through the install-method checks below.
-        pass
+    if _dashboard_update_disabled_by_config():
+        return (
+            "Installing Hermes updates is disabled in this Dashboard because "
+            "this installation uses an external update workflow."
+        )
 
     if _default_hermes_root_is_opt_data():
         return (
@@ -2583,6 +2586,65 @@ def _dashboard_local_update_managed_externally() -> bool:
     running container filesystem.
     """
     return _dashboard_update_disabled_message() is not None
+
+
+def _dashboard_update_check_target() -> Optional[Tuple[str, str]]:
+    """Resolve a configured ``remote/branch`` for a read-only update check."""
+    raw = str(_dashboard_updates_config().get("dashboard_update_check_ref", "")).strip()
+    if not raw or "/" not in raw:
+        return None
+    remote, branch = raw.split("/", 1)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", remote):
+        return None
+    if not branch or branch.startswith("-") or ".." in branch:
+        return None
+    check = subprocess.run(
+        ["git", "check-ref-format", f"refs/heads/{branch}"],
+        capture_output=True,
+        timeout=5,
+        cwd=str(PROJECT_ROOT),
+    )
+    return (remote, branch) if check.returncode == 0 else None
+
+
+def _check_configured_dashboard_git_ref(remote: str, branch: str) -> Optional[int]:
+    """Fetch and count official commits missing from HEAD without applying them."""
+    target_ref = f"refs/remotes/{remote}/{branch}"
+    try:
+        remote_check = subprocess.run(
+            ["git", "remote", "get-url", remote],
+            capture_output=True,
+            timeout=5,
+            cwd=str(PROJECT_ROOT),
+        )
+        if remote_check.returncode != 0:
+            return None
+        fetched = subprocess.run(
+            [
+                "git",
+                "fetch",
+                "--quiet",
+                remote,
+                f"+refs/heads/{branch}:{target_ref}",
+            ],
+            capture_output=True,
+            timeout=15,
+            cwd=str(PROJECT_ROOT),
+        )
+        if fetched.returncode != 0:
+            return None
+        counted = subprocess.run(
+            ["git", "rev-list", "--count", f"HEAD..{target_ref}"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            cwd=str(PROJECT_ROOT),
+        )
+        return int(counted.stdout.strip()) if counted.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 def _managed_files_policy(request: Request, *, create_root: bool = True) -> ManagedFilesPolicy:
@@ -5164,16 +5226,16 @@ async def update_hermes():
     }
 
 
-def _recent_upstream_commits(n: int = 20) -> List[Dict[str, Any]]:
-    """Commits the local checkout is behind ``origin/main`` by, newest first.
+def _recent_upstream_commits(
+    n: int = 20, target_ref: str = "origin/main"
+) -> List[Dict[str, Any]]:
+    """Commits the local checkout is behind ``target_ref`` by, newest first.
 
-    Logs the SAME range the behind-count uses (``HEAD..origin/main`` — see
-    ``banner._check_via_local_git``), NOT the branch's ``@{upstream}``. On a
-    feature-branch checkout ``@{upstream}`` is the branch's own tip (zero
-    commits), which would leave the changelog empty even though the count is
-    non-zero. Pinning to ``origin/main`` keeps count and changelog consistent.
+    Logs the same ``HEAD..target_ref`` range used for the behind count, not the
+    branch's ``@{upstream}``. On a feature branch that upstream is normally the
+    fork branch itself and cannot answer whether the official source moved.
 
-    Best-effort: returns [] if not a git checkout, origin/main is unreachable,
+    Best-effort: returns [] if not a git checkout, the target is unreachable,
     or git is unavailable. Never raises into the request path.
     """
     try:
@@ -5184,7 +5246,7 @@ def _recent_upstream_commits(n: int = 20) -> List[Dict[str, Any]]:
                 str(PROJECT_ROOT),
                 "log",
                 "--format=%H%x1f%s%x1f%an%x1f%ct",
-                "HEAD..origin/main",
+                f"HEAD..{target_ref}",
                 f"-n{int(n)}",
             ],
             capture_output=True,
@@ -5244,7 +5306,8 @@ async def check_hermes_update(force: bool = False):
                  desktop's remote update overlay renders this as "what's
                  changed". Additive: existing consumers ignore it.
     """
-    if _dashboard_local_update_managed_externally():
+    apply_disabled_by_config = _dashboard_update_disabled_by_config()
+    if _dashboard_local_update_managed_externally() and not apply_disabled_by_config:
         message = _dashboard_update_disabled_message() or (
             "Hermes updates are managed outside this dashboard."
         )
@@ -5259,14 +5322,20 @@ async def check_hermes_update(force: bool = False):
         }
 
     install_method = detect_install_method(PROJECT_ROOT)
+    updates_config = _dashboard_updates_config()
     update_command = recommended_update_command_for_method(install_method)
+    if apply_disabled_by_config:
+        update_command = str(
+            updates_config.get("dashboard_update_command")
+            or "external update workflow"
+        )
 
     payload: Dict[str, Any] = {
         "install_method": install_method,
         "current_version": __version__,
         "behind": None,
         "update_available": False,
-        "can_apply": install_method == "git",
+        "can_apply": install_method == "git" and not apply_disabled_by_config,
         "update_command": update_command,
         "message": None,
     }
@@ -5283,16 +5352,27 @@ async def check_hermes_update(force: bool = False):
     # banner.check_for_updates() handles git / nix-revision paths and
     # caches the result for 6h. ``force`` busts the cache so the "Check now"
     # button reflects reality immediately.
+    check_target = _dashboard_update_check_target()
+    recent_target_ref = "origin/main"
+    if check_target is not None:
+        payload["check_ref"] = "/".join(check_target)
     try:
-        from hermes_cli.banner import check_for_updates
+        if check_target is not None:
+            remote, branch = check_target
+            recent_target_ref = f"refs/remotes/{remote}/{branch}"
+            behind = await asyncio.to_thread(
+                _check_configured_dashboard_git_ref, remote, branch
+            )
+        else:
+            from hermes_cli.banner import check_for_updates
 
-        if force:
-            try:
-                (get_hermes_home() / ".update_check").unlink()
-            except OSError:
-                pass
+            if force:
+                try:
+                    (get_hermes_home() / ".update_check").unlink()
+                except OSError:
+                    pass
 
-        behind = await asyncio.to_thread(check_for_updates)
+            behind = await asyncio.to_thread(check_for_updates)
     except Exception:
         _log.exception("Update check failed")
         behind = None
@@ -5304,11 +5384,15 @@ async def check_hermes_update(force: bool = False):
         payload["message"] = "You're on the latest version."
     else:
         payload["update_available"] = True
+        if apply_disabled_by_config:
+            payload["message"] = _dashboard_update_disabled_message()
         # Enrich with the actual commits we're behind by, so the desktop's
         # remote update overlay can show "what's changed". git only;
         # best-effort (empty list on any failure).
         if install_method == "git":
-            payload["commits"] = await asyncio.to_thread(_recent_upstream_commits)
+            payload["commits"] = await asyncio.to_thread(
+                _recent_upstream_commits, 20, recent_target_ref
+            )
 
     return payload
 

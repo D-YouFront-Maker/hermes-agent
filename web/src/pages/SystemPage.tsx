@@ -512,7 +512,6 @@ export default function SystemPage() {
   // ── Update check / apply ───────────────────────────────────────────
   const checkForUpdate = useCallback(
     async (force = false) => {
-      if (status?.can_update_hermes === false) return;
       setCheckingUpdate(true);
       try {
         const info = await api.checkHermesUpdate(force);
@@ -521,12 +520,12 @@ export default function SystemPage() {
           if (info.update_available) {
             showToast(
               info.behind && info.behind > 0
-                ? `Update available — ${info.behind} commit${info.behind === 1 ? "" : "s"} behind`
-                : "Update available",
+                ? `Official update available — ${info.behind} commit${info.behind === 1 ? "" : "s"} behind`
+                : "Official update available",
               "success",
             );
           } else if (info.behind === 0) {
-            showToast("You're on the latest version", "success");
+            showToast("Your fork includes all official updates", "success");
           } else if (info.message) {
             showToast(info.message, "error");
           }
@@ -537,7 +536,7 @@ export default function SystemPage() {
         setCheckingUpdate(false);
       }
     },
-    [showToast, status?.can_update_hermes],
+    [showToast],
   );
 
   // Auto-check (cached) runs inside loadAll on mount; this is the
@@ -849,16 +848,15 @@ export default function SystemPage() {
                 <div className="text-xs uppercase tracking-wider text-muted-foreground">Hermes</div>
                 <div className="flex items-center gap-2">
                   <span>v{stats?.hermes_version}</span>
-                  {canUpdateHermes &&
-                    updateInfo &&
+                  {updateInfo &&
                     (updateInfo.update_available ? (
                       <Badge tone="warning">
                         {updateInfo.behind && updateInfo.behind > 0
-                          ? `${updateInfo.behind} behind`
-                          : "update available"}
+                          ? `${updateInfo.behind} official behind`
+                          : "official update available"}
                       </Badge>
                     ) : updateInfo.behind === 0 ? (
-                      <Badge tone="success">latest</Badge>
+                      <Badge tone="success">official up to date</Badge>
                     ) : null)}
                 </div>
               </div>
@@ -910,8 +908,7 @@ export default function SystemPage() {
                 CPU / memory / disk metrics.
               </p>
             )}
-            {canUpdateHermes && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
                 <Button
                   size="sm"
                   ghost
@@ -925,9 +922,9 @@ export default function SystemPage() {
                   }
                   onClick={() => void checkForUpdate(true)}
                 >
-                  Check for updates
+                  Check official updates
                 </Button>
-                {updateInfo?.update_available && updateInfo.can_apply && (
+                {canUpdateHermes && updateInfo?.update_available && updateInfo.can_apply && (
                   <Button
                     size="sm"
                     prefix={<Download className="h-3.5 w-3.5" />}
@@ -949,8 +946,12 @@ export default function SystemPage() {
                     {updateInfo.message}
                   </span>
                 )}
+                {updateInfo?.check_ref && (
+                  <span className="text-xs text-muted-foreground">
+                    Official source: <span className="font-mono">{updateInfo.check_ref}</span>
+                  </span>
+                )}
               </div>
-            )}
           </CardContent>
         </Card>
       </section>

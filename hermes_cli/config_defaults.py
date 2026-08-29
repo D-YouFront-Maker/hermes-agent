@@ -3442,10 +3442,17 @@ DEFAULT_CONFIG = {
     "updates": {
         # The built-in Dashboard action always runs the generic
         # ``hermes update`` flow. Disable it when updates are orchestrated by
-        # an external workflow for a maintained custom branch. This hides the
-        # button and blocks the backing endpoint; terminal update commands are
-        # unaffected.
+        # an external workflow for a maintained custom branch. This blocks the
+        # apply endpoint while the read-only update check remains available;
+        # terminal update commands are unaffected.
         "dashboard_update_enabled": True,
+        # Optional git target used by the Dashboard's read-only update check.
+        # Leave empty for the standard origin/main checker. Fork maintainers
+        # can use e.g. upstream/main without allowing the Dashboard to apply it.
+        "dashboard_update_check_ref": "",
+        # Guidance displayed when an update exists but applying it from the
+        # Dashboard is disabled.
+        "dashboard_update_command": "external update workflow",
         # Pre-update safety backup — ONE consolidated mechanism, three modes:
         #
         #   quick (default) — snapshot critical small state files (pairing

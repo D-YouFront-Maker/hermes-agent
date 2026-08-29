@@ -1774,6 +1774,7 @@ export interface UpdateCheckResponse {
   behind: number | null;
   update_available: boolean;
   can_apply: boolean;
+  check_ref?: string;
   update_command: string;
   message: string | null;
 }
