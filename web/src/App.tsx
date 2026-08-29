@@ -965,7 +965,7 @@ function SidebarSystemActions({
     let cancelled = false;
     setUpdateConfirmChecking(true);
     api
-      .checkHermesUpdate(false)
+      .checkHermesUpdate(!canUpdateHermes)
       .then((info) => {
         if (!cancelled) setUpdateConfirmInfo(info);
       })
@@ -978,9 +978,22 @@ function SidebarSystemActions({
     return () => {
       cancelled = true;
     };
-  }, [updateConfirmOpen]);
+  }, [canUpdateHermes, updateConfirmOpen]);
 
   const updateConfirmDescription = useMemo(() => {
+    if (!canUpdateHermes) {
+      if (updateConfirmInfo?.behind && updateConfirmInfo.behind > 0) {
+        const n = updateConfirmInfo.behind;
+        return `Há ${n} commit${n === 1 ? " oficial" : "s oficiais"} novo${n === 1 ? "" : "s"} em upstream/main. Para integrar com segurança, use: ${updateConfirmInfo.update_command}`;
+      }
+      if (updateConfirmInfo?.behind === 0) {
+        return "Seu fork inclui todas as atualizações oficiais de upstream/main.";
+      }
+      return (
+        updateConfirmInfo?.message ??
+        "Não foi possível consultar upstream/main agora. Tente novamente mais tarde."
+      );
+    }
     if (updateConfirmInfo?.behind && updateConfirmInfo.behind > 0) {
       const cmd = updateConfirmInfo.update_command;
       const n = updateConfirmInfo.behind;
@@ -991,7 +1004,7 @@ function SidebarSystemActions({
       t.status.updateHermesConfirmMessage ??
       `This will run 'hermes update' (${cmd}) and restart the gateway when it finishes.`
     );
-  }, [t.status.updateHermesConfirmMessage, updateConfirmInfo]);
+  }, [canUpdateHermes, t.status.updateHermesConfirmMessage, updateConfirmInfo]);
 
   const items: SystemActionItem[] = [
     {
@@ -1019,11 +1032,6 @@ function SidebarSystemActions({
       return;
     }
     if (action === "update") {
-      if (!canUpdateHermes) {
-        navigate("/system");
-        onNavigate();
-        return;
-      }
       setUpdateConfirmOpen(true);
       return;
     }
@@ -1041,6 +1049,7 @@ function SidebarSystemActions({
 
   const confirmUpdate = () => {
     setUpdateConfirmOpen(false);
+    if (!canUpdateHermes) return;
     void runAction("update");
     navigate("/sessions");
     onNavigate();
@@ -1105,15 +1114,26 @@ function SidebarSystemActions({
 
     <ConfirmDialog
       cancelLabel={t.common.cancel}
-      confirmLabel={t.status.updateHermesConfirmNow ?? "Update now"}
+      confirmLabel={
+        canUpdateHermes
+          ? (t.status.updateHermesConfirmNow ?? "Update now")
+          : "OK"
+      }
       description={
         updateConfirmChecking ? t.common.loading : updateConfirmDescription
       }
-      loading={pendingAction === "update" || updateConfirmChecking}
+      loading={
+        (canUpdateHermes && pendingAction === "update") ||
+        updateConfirmChecking
+      }
       onCancel={() => setUpdateConfirmOpen(false)}
       onConfirm={confirmUpdate}
       open={updateConfirmOpen}
-      title={t.status.updateHermesConfirmTitle ?? `${t.status.updateHermes}?`}
+      title={
+        canUpdateHermes
+          ? (t.status.updateHermesConfirmTitle ?? `${t.status.updateHermes}?`)
+          : "Atualizações oficiais"
+      }
     />
     </>
   );
