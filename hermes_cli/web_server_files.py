@@ -7,7 +7,7 @@ import urllib.request
 from dataclasses import dataclass
 from fastapi import HTTPException, Request
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 _MANAGED_FILES_ROOT_ENV = "HERMES_DASHBOARD_FILES_ROOT"
@@ -88,6 +88,43 @@ def _default_hermes_root_is_opt_data() -> bool:
     return root == _HOSTED_MANAGED_FILES_ROOT
 
 
+def _dashboard_update_disabled_message() -> Optional[str]:
+    """Explain why the Dashboard must not offer ``hermes update``."""
+    try:
+        from hermes_cli.config import load_config
+
+        updates = (load_config() or {}).get("updates", {})
+        if isinstance(updates, dict) and not bool(updates.get("dashboard_update_enabled", True)):
+            return (
+                "Hermes updates are disabled in this Dashboard because this "
+                "installation uses an external update workflow."
+            )
+    except Exception:
+        # An unreadable config must not hide updates accidentally.
+        pass
+
+    if _default_hermes_root_is_opt_data():
+        return "Hermes updates are managed outside this dashboard in containerized environments."
+
+    try:
+        from hermes_constants import is_container
+
+        if not is_container():
+            return None
+    except Exception:
+        return None
+
+    from hermes_cli.web_server import PROJECT_ROOT
+    from hermes_cli.config import detect_install_method
+
+    try:
+        if detect_install_method(PROJECT_ROOT) == "git":
+            return None
+    except Exception:
+        pass
+    return "Hermes updates are managed outside this dashboard in containerized environments."
+
+
 def _dashboard_local_update_managed_externally() -> bool:
     """True when the dashboard should not offer ``hermes update``.
 
@@ -96,23 +133,7 @@ def _dashboard_local_update_managed_externally() -> bool:
     the update button is the correct path. pip stays blocked in containers: its
     apply path mutates the running container filesystem.
     """
-    from hermes_cli.web_server import PROJECT_ROOT
-    from hermes_cli.config import detect_install_method
-    if _default_hermes_root_is_opt_data():
-        return True
-    try:
-        from hermes_constants import is_container
-
-        if not is_container():
-            return False
-    except Exception:
-        return False
-    try:
-        if detect_install_method(PROJECT_ROOT) == "git":
-            return False
-    except Exception:
-        pass
-    return True
+    return _dashboard_update_disabled_message() is not None
 
 
 def _managed_files_policy(request: Request, *, create_root: bool = True) -> ManagedFilesPolicy:

@@ -28,6 +28,7 @@ status_router = APIRouter()
 
 # Late-bound so a test's monkeypatch on the owning module wins at call time.
 _dashboard_local_update_managed_externally = late("_dashboard_local_update_managed_externally", "hermes_cli.web_server_files")
+_dashboard_update_disabled_message = late("_dashboard_update_disabled_message", "hermes_cli.web_server_files")
 _spawn_gateway_restart = late("_spawn_gateway_restart")
 _spawn_hermes_action = late("_spawn_hermes_action", "hermes_cli.web_server_gateway")
 detect_install_method = late("detect_install_method", "hermes_cli.config")
@@ -201,7 +202,8 @@ def _update_refused(error: str, message: str, update_command: str) -> Dict[str, 
 async def update_hermes():
     """Kick off ``hermes update`` in the background."""
     if _dashboard_local_update_managed_externally():
-        message = _MANAGED_EXTERNALLY_MESSAGE + " The built-in local updater is disabled here."
+        message = _dashboard_update_disabled_message() or _MANAGED_EXTERNALLY_MESSAGE
+        message += " The built-in local updater is disabled here."
         return _update_refused("dashboard_update_managed_externally", message, "managed outside dashboard")
 
     # Shared admission gate: marker-first, then the docker/nix/apt heuristics —
@@ -278,10 +280,11 @@ async def check_hermes_update(force: bool = False):
     [{sha, summary, author, at}] (additive; existing consumers ignore it).
     """
     if _dashboard_local_update_managed_externally():
+        message = _dashboard_update_disabled_message() or _MANAGED_EXTERNALLY_MESSAGE
         return {
             "install_method": "managed-runtime", "current_version": __version__, "behind": None,
             "update_available": False, "can_apply": False,
-            "update_command": "managed outside dashboard", "message": _MANAGED_EXTERNALLY_MESSAGE,
+            "update_command": "managed outside dashboard", "message": message,
         }
 
     install_method = detect_install_method(_server_path("PROJECT_ROOT"))

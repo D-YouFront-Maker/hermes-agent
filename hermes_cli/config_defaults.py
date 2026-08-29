@@ -2065,6 +2065,9 @@ DEFAULT_CONFIG = {
     },
 
     "updates": {
+        # A maintained custom branch can keep the read-only update check while
+        # refusing the Dashboard's generic ``hermes update`` action.
+        "dashboard_update_enabled": True,
         # Pre-update backup. quick = snapshot small critical state (pairing JSONs, cron jobs,
         # config.yaml, .env, auth.json, profile DBs) into <HERMES_HOME>/state-snapshots/, skipping
         # files >1 GiB; restore via ``/snapshot``. full = quick PLUS a ``hermes backup`` zip in
