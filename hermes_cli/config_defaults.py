@@ -3440,6 +3440,12 @@ DEFAULT_CONFIG = {
 
     # ``hermes update`` behaviour.
     "updates": {
+        # The built-in Dashboard action always runs the generic
+        # ``hermes update`` flow. Disable it when updates are orchestrated by
+        # an external workflow for a maintained custom branch. This hides the
+        # button and blocks the backing endpoint; terminal update commands are
+        # unaffected.
+        "dashboard_update_enabled": True,
         # Pre-update safety backup — ONE consolidated mechanism, three modes:
         #
         #   quick (default) — snapshot critical small state files (pairing

@@ -850,6 +850,45 @@ class TestUpdateCheckEndpoint:
         assert body["behind"] is None
         assert "managed outside this dashboard" in body["message"]
 
+    def test_config_disables_dashboard_update_action(self, monkeypatch):
+        import yaml
+        import hermes_cli.web_server as ws
+        from hermes_constants import get_hermes_home
+
+        config_path = get_hermes_home() / "config.yaml"
+        config_path.write_text(
+            yaml.safe_dump({"updates": {"dashboard_update_enabled": False}}),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(
+            ws,
+            "detect_install_method",
+            lambda *a, **k: pytest.fail(
+                "disabled dashboard update should not probe install method"
+            ),
+        )
+        monkeypatch.setattr(
+            ws,
+            "_spawn_hermes_action",
+            lambda *_a, **_k: pytest.fail(
+                "disabled dashboard update should not spawn hermes update"
+            ),
+        )
+
+        status = self.client.get("/api/status").json()
+        assert status["can_update_hermes"] is False
+
+        check = self.client.get("/api/hermes/update/check").json()
+        assert check["can_apply"] is False
+        assert check["update_available"] is False
+        assert "external update workflow" in check["message"]
+
+        apply = self.client.post("/api/hermes/update").json()
+        assert apply["ok"] is False
+        assert apply["pid"] is None
+        assert "external update workflow" in apply["message"]
+
 
 
 

@@ -2516,6 +2516,57 @@ def _default_hermes_root_is_opt_data() -> bool:
     return root == _HOSTED_MANAGED_FILES_ROOT
 
 
+def _dashboard_update_disabled_message() -> Optional[str]:
+    """Explain why the dashboard must not offer ``hermes update``.
+
+    A user-managed custom branch can opt out explicitly through config. The
+    existing container/package checks remain the automatic refusal path for
+    immutable installations.
+    """
+    try:
+        from hermes_cli.config import load_config
+
+        updates = (load_config() or {}).get("updates", {})
+        if isinstance(updates, dict) and not bool(
+            updates.get("dashboard_update_enabled", True)
+        ):
+            return (
+                "Hermes updates are disabled in this Dashboard because this "
+                "installation uses an external update workflow."
+            )
+    except Exception:
+        # A malformed/unreadable config must not hide updates by accident;
+        # continue through the install-method checks below.
+        pass
+
+    if _default_hermes_root_is_opt_data():
+        return (
+            "Hermes updates are managed outside this dashboard in "
+            "containerized environments."
+        )
+
+    try:
+        from hermes_constants import is_container
+
+        if not is_container():
+            return None
+    except Exception:
+        return None
+
+    # A bind-mounted git checkout inside a container is still mutable and can
+    # use the built-in action. Other container installs remain externally
+    # managed unless their in-place apply path is proven safe.
+    try:
+        if detect_install_method(PROJECT_ROOT) == "git":
+            return None
+    except Exception:
+        pass
+    return (
+        "Hermes updates are managed outside this dashboard in "
+        "containerized environments."
+    )
+
+
 def _dashboard_local_update_managed_externally() -> bool:
     """Return true when the dashboard should not offer ``hermes update``.
 
@@ -2531,27 +2582,7 @@ def _dashboard_local_update_managed_externally() -> bool:
     externally managed unless their apply path is proven safe inside the
     running container filesystem.
     """
-    if _default_hermes_root_is_opt_data():
-        return True
-    try:
-        from hermes_constants import is_container
-
-        if not is_container():
-            return False
-    except Exception:
-        return False
-    # We are inside a container, but the install may still be self-managed.
-    # If the install method is git, the dashboard update button works against
-    # the mounted checkout and should be offered. Keep pip blocked inside
-    # containers: its apply path mutates the running container filesystem and
-    # is not the bind-mounted checkout case this gate is meant to recover.
-    try:
-        method = detect_install_method(PROJECT_ROOT)
-        if method == "git":
-            return False
-    except Exception:
-        pass
-    return True
+    return _dashboard_update_disabled_message() is not None
 
 
 def _managed_files_policy(request: Request, *, create_root: bool = True) -> ManagedFilesPolicy:
@@ -5059,10 +5090,9 @@ async def gateway_drain(request: Request):
 async def update_hermes():
     """Kick off ``hermes update`` in the background."""
     if _dashboard_local_update_managed_externally():
-        message = (
-            "Hermes updates are managed outside this dashboard in "
-            "containerized environments. The built-in local updater is "
-            "disabled here."
+        message = _dashboard_update_disabled_message() or (
+            "Hermes updates are managed outside this dashboard. "
+            "The built-in local updater is disabled here."
         )
         _record_completed_action("hermes-update", message, exit_code=1)
         return {
@@ -5215,6 +5245,9 @@ async def check_hermes_update(force: bool = False):
                  changed". Additive: existing consumers ignore it.
     """
     if _dashboard_local_update_managed_externally():
+        message = _dashboard_update_disabled_message() or (
+            "Hermes updates are managed outside this dashboard."
+        )
         return {
             "install_method": "managed-runtime",
             "current_version": __version__,
@@ -5222,10 +5255,7 @@ async def check_hermes_update(force: bool = False):
             "update_available": False,
             "can_apply": False,
             "update_command": "managed outside dashboard",
-            "message": (
-                "Hermes updates are managed outside this dashboard in "
-                "containerized environments."
-            ),
+            "message": message,
         }
 
     install_method = detect_install_method(PROJECT_ROOT)
