@@ -11,6 +11,7 @@ import pytest
 import hermes_cli.config as _cfg_mod
 import hermes_cli.web_server_files as _web_server_files
 import hermes_cli.web_server_gateway as _web_server_gateway
+import hermes_cli.web_routers.actions as _actions
 
 
 def _client():
@@ -889,23 +890,27 @@ class TestUpdateCheckEndpoint:
         assert body["behind"] is None
         assert "managed outside this dashboard" in body["message"]
 
-    def test_config_disables_dashboard_update_action(self, monkeypatch):
+    def test_config_disables_apply_but_keeps_official_update_check(self, monkeypatch):
         import yaml
         from hermes_constants import get_hermes_home
 
         config_path = get_hermes_home() / "config.yaml"
         config_path.write_text(
-            yaml.safe_dump({"updates": {"dashboard_update_enabled": False}}),
+            yaml.safe_dump({"updates": {
+                "dashboard_update_enabled": False,
+                "dashboard_update_check_ref": "upstream/main",
+                "dashboard_update_command": "./sync-hermes.sh --integrate-upstream",
+            }}),
             encoding="utf-8",
         )
 
         monkeypatch.setattr(
             _cfg_mod,
             "detect_install_method",
-            lambda *a, **k: pytest.fail(
-                "disabled dashboard update should not probe install method"
-            ),
+            lambda *a, **k: "git",
         )
+        monkeypatch.setattr(_web_server_files, "_check_configured_dashboard_git_ref", lambda remote, branch: 4)
+        monkeypatch.setattr(_actions, "_recent_upstream_commits", lambda *a, **k: [])
         monkeypatch.setattr(
             _web_server_gateway,
             "_spawn_hermes_action",
@@ -919,7 +924,10 @@ class TestUpdateCheckEndpoint:
 
         check = self.client.get("/api/hermes/update/check").json()
         assert check["can_apply"] is False
-        assert check["update_available"] is False
+        assert check["update_available"] is True
+        assert check["behind"] == 4
+        assert check["check_ref"] == "upstream/main"
+        assert check["update_command"] == "./sync-hermes.sh --integrate-upstream"
         assert "external update workflow" in check["message"]
 
         apply = self.client.post("/api/hermes/update").json()

@@ -29,6 +29,10 @@ status_router = APIRouter()
 # Late-bound so a test's monkeypatch on the owning module wins at call time.
 _dashboard_local_update_managed_externally = late("_dashboard_local_update_managed_externally", "hermes_cli.web_server_files")
 _dashboard_update_disabled_message = late("_dashboard_update_disabled_message", "hermes_cli.web_server_files")
+_dashboard_update_disabled_by_config = late("_dashboard_update_disabled_by_config", "hermes_cli.web_server_files")
+_dashboard_update_check_target = late("_dashboard_update_check_target", "hermes_cli.web_server_files")
+_check_configured_dashboard_git_ref = late("_check_configured_dashboard_git_ref", "hermes_cli.web_server_files")
+_dashboard_updates_config = late("_dashboard_updates_config", "hermes_cli.web_server_files")
 _spawn_gateway_restart = late("_spawn_gateway_restart")
 _spawn_hermes_action = late("_spawn_hermes_action", "hermes_cli.web_server_gateway")
 detect_install_method = late("detect_install_method", "hermes_cli.config")
@@ -232,8 +236,8 @@ async def update_hermes():
     return {"ok": True, "pid": proc.pid, "name": "hermes-update", "action_id": action_id}
 
 
-def _recent_upstream_commits(n: int = 20) -> List[Dict[str, Any]]:
-    """Commits the local checkout is behind ``origin/main`` by, newest first; [] on any failure.
+def _recent_upstream_commits(n: int = 20, target_ref: str = "origin/main") -> List[Dict[str, Any]]:
+    """Commits the local checkout is behind ``target_ref`` by, newest first; [] on failure.
 
     Logs the SAME range the behind-count uses (``HEAD..origin/main``, see
     ``banner._check_via_local_git``), NOT ``@{upstream}``: on a feature branch that is
@@ -246,7 +250,7 @@ def _recent_upstream_commits(n: int = 20) -> List[Dict[str, Any]]:
         out = subprocess.run(
             [
                 "git", "-C", str(_server_path("PROJECT_ROOT")), "log", "--format=%H%x1f%s%x1f%an%x1f%ct",
-                "HEAD..origin/main", f"-n{int(n)}",
+                f"HEAD..{target_ref}", f"-n{int(n)}",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
         )
@@ -279,7 +283,8 @@ async def check_hermes_update(force: bool = False):
     non-applyable methods) and, for git installs that are behind, commits
     [{sha, summary, author, at}] (additive; existing consumers ignore it).
     """
-    if _dashboard_local_update_managed_externally():
+    apply_disabled_by_config = _dashboard_update_disabled_by_config()
+    if _dashboard_local_update_managed_externally() and not apply_disabled_by_config:
         message = _dashboard_update_disabled_message() or _MANAGED_EXTERNALLY_MESSAGE
         return {
             "install_method": "managed-runtime", "current_version": __version__, "behind": None,
@@ -288,10 +293,14 @@ async def check_hermes_update(force: bool = False):
         }
 
     install_method = detect_install_method(_server_path("PROJECT_ROOT"))
+    updates_config = _dashboard_updates_config()
+    update_command = recommended_update_command_for_method(install_method)
+    if apply_disabled_by_config:
+        update_command = str(updates_config.get("dashboard_update_command") or "external update workflow")
     payload: Dict[str, Any] = {
         "install_method": install_method, "current_version": __version__, "behind": None,
-        "update_available": False, "can_apply": install_method == "git",
-        "update_command": recommended_update_command_for_method(install_method), "message": None,
+        "update_available": False, "can_apply": install_method == "git" and not apply_disabled_by_config,
+        "update_command": update_command, "message": None,
     }
     non_applyable = _NON_APPLYABLE_MESSAGES.get(install_method)
     if non_applyable is not None:
@@ -300,13 +309,22 @@ async def check_hermes_update(force: bool = False):
 
     # banner.check_for_updates() handles git / nix-revision paths and caches
     # the result for 6h. ``force`` busts the cache so "Check now" reflects reality.
+    check_target = _dashboard_update_check_target()
+    recent_target_ref = "origin/main"
+    if check_target is not None:
+        payload["check_ref"] = "/".join(check_target)
     try:
-        from hermes_cli.banner import check_for_updates
+        if check_target is not None:
+            remote, branch = check_target
+            recent_target_ref = f"refs/remotes/{remote}/{branch}"
+            behind = await asyncio.to_thread(_check_configured_dashboard_git_ref, remote, branch)
+        else:
+            from hermes_cli.banner import check_for_updates
 
-        if force:
-            with contextlib.suppress(OSError):
-                (get_hermes_home() / ".update_check").unlink()
-        behind = await asyncio.to_thread(check_for_updates)
+            if force:
+                with contextlib.suppress(OSError):
+                    (get_hermes_home() / ".update_check").unlink()
+            behind = await asyncio.to_thread(check_for_updates)
     except Exception:
         _log.exception("Update check failed")
         behind = None
@@ -318,10 +336,12 @@ async def check_hermes_update(force: bool = False):
         payload["message"] = "You're on the latest version."
     else:
         payload["update_available"] = True
+        if apply_disabled_by_config:
+            payload["message"] = _dashboard_update_disabled_message()
         # "What's changed" for the desktop's remote update overlay; git only,
         # best-effort (empty list on any failure).
         if install_method == "git":
-            payload["commits"] = await asyncio.to_thread(_recent_upstream_commits)
+            payload["commits"] = await asyncio.to_thread(_recent_upstream_commits, 20, recent_target_ref)
     return payload
 
 

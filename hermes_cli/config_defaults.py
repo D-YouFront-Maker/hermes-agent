@@ -2068,6 +2068,10 @@ DEFAULT_CONFIG = {
         # A maintained custom branch can keep the read-only update check while
         # refusing the Dashboard's generic ``hermes update`` action.
         "dashboard_update_enabled": True,
+        # Optional remote/branch used only by the Dashboard's read-only check.
+        "dashboard_update_check_ref": "",
+        # Guidance shown when the Dashboard may check but may not apply.
+        "dashboard_update_command": "external update workflow",
         # Pre-update backup. quick = snapshot small critical state (pairing JSONs, cron jobs,
         # config.yaml, .env, auth.json, profile DBs) into <HERMES_HOME>/state-snapshots/, skipping
         # files >1 GiB; restore via ``/snapshot``. full = quick PLUS a ``hermes backup`` zip in

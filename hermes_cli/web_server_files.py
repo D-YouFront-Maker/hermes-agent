@@ -3,11 +3,13 @@
 
 import mimetypes
 import os
+import re
+import subprocess
 import urllib.request
 from dataclasses import dataclass
 from fastapi import HTTPException, Request
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 _MANAGED_FILES_ROOT_ENV = "HERMES_DASHBOARD_FILES_ROOT"
@@ -88,20 +90,28 @@ def _default_hermes_root_is_opt_data() -> bool:
     return root == _HOSTED_MANAGED_FILES_ROOT
 
 
-def _dashboard_update_disabled_message() -> Optional[str]:
-    """Explain why the Dashboard must not offer ``hermes update``."""
+def _dashboard_updates_config() -> Dict[str, Any]:
+    """Return the user-facing Dashboard update settings, best-effort."""
     try:
         from hermes_cli.config import load_config
 
         updates = (load_config() or {}).get("updates", {})
-        if isinstance(updates, dict) and not bool(updates.get("dashboard_update_enabled", True)):
-            return (
-                "Hermes updates are disabled in this Dashboard because this "
-                "installation uses an external update workflow."
-            )
+        return updates if isinstance(updates, dict) else {}
     except Exception:
-        # An unreadable config must not hide updates accidentally.
-        pass
+        return {}
+
+
+def _dashboard_update_disabled_by_config() -> bool:
+    return not bool(_dashboard_updates_config().get("dashboard_update_enabled", True))
+
+
+def _dashboard_update_disabled_message() -> Optional[str]:
+    """Explain why the Dashboard must not offer ``hermes update``."""
+    if _dashboard_update_disabled_by_config():
+        return (
+            "Installing Hermes updates is disabled in this Dashboard because "
+            "this installation uses an external update workflow."
+        )
 
     if _default_hermes_root_is_opt_data():
         return "Hermes updates are managed outside this dashboard in containerized environments."
@@ -134,6 +144,64 @@ def _dashboard_local_update_managed_externally() -> bool:
     apply path mutates the running container filesystem.
     """
     return _dashboard_update_disabled_message() is not None
+
+
+def _dashboard_update_check_target() -> Optional[Tuple[str, str]]:
+    """Resolve a configured ``remote/branch`` for a read-only update check."""
+    raw = str(_dashboard_updates_config().get("dashboard_update_check_ref", "")).strip()
+    if not raw or "/" not in raw:
+        return None
+    remote, branch = raw.split("/", 1)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", remote):
+        return None
+    if not branch or branch.startswith("-") or ".." in branch:
+        return None
+
+    from hermes_cli.web_server import PROJECT_ROOT
+
+    checked = subprocess.run(
+        ["git", "check-ref-format", f"refs/heads/{branch}"],
+        capture_output=True,
+        timeout=5,
+        cwd=str(PROJECT_ROOT),
+    )
+    return (remote, branch) if checked.returncode == 0 else None
+
+
+def _check_configured_dashboard_git_ref(remote: str, branch: str) -> Optional[int]:
+    """Fetch and count official commits missing from HEAD without applying them."""
+    from hermes_cli.web_server import PROJECT_ROOT
+
+    target_ref = f"refs/remotes/{remote}/{branch}"
+    try:
+        remote_check = subprocess.run(
+            ["git", "remote", "get-url", remote],
+            capture_output=True,
+            timeout=5,
+            cwd=str(PROJECT_ROOT),
+        )
+        if remote_check.returncode != 0:
+            return None
+        fetched = subprocess.run(
+            ["git", "fetch", "--quiet", remote, f"+refs/heads/{branch}:{target_ref}"],
+            capture_output=True,
+            timeout=15,
+            cwd=str(PROJECT_ROOT),
+        )
+        if fetched.returncode != 0:
+            return None
+        counted = subprocess.run(
+            ["git", "rev-list", "--count", f"HEAD..{target_ref}"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            cwd=str(PROJECT_ROOT),
+        )
+        return int(counted.stdout.strip()) if counted.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 def _managed_files_policy(request: Request, *, create_root: bool = True) -> ManagedFilesPolicy:
